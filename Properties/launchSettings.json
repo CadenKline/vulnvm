@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "vulnVM": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
