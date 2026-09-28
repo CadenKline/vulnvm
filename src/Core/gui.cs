@@ -29,7 +29,7 @@ namespace gui
 
         public void InitializeComponent()
         {
-=           interfaceState.Text = "vulnVM";
+            interfaceState.Text = "vulnVM";
             interfaceState.AutoScroll = true;
 
             var sectionNew = new Label {Text = "New VM", AutoSize = true, Location = new Point(20, 20)};
@@ -200,6 +200,16 @@ namespace gui
             Task.Run(() => init.VBoxCreateFromIso());
 
             LoadVmList();
+
+            vm.WaitForBoot();
+            vm.WaitForGuestControl();
+            vm.CopyAgent();
+            vm.RegisterAgent();
+            vm.TriggerLogonForAgentStart();
+            vm.WaitForBoot();
+            vm.WaitForGuestControl();
+            vm.WaitForAgent();
+            vm.SaveSnapshot();
         }
 
         void BootVm(object? sender, EventArgs e)

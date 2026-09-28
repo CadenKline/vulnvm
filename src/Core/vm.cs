@@ -95,10 +95,6 @@ namespace vm
                 vmset.VdiPath = Path.Combine(vdiFolder, $"{vmset.VmName}.vdi");
                 vmset.VBoxPath = Path.Combine(vdiFolder, $"{vmset.VmName}.vbox");
 
-                if (Directory.Exists(vdiFolder))
-                {
-                    TryDeleteDirectory(vdiFolder);
-                }
                 if (File.Exists(vmset.VdiPath))
                 {
                     File.Delete(vmset.VdiPath);
@@ -108,43 +104,8 @@ namespace vm
                 if (File.Exists(vmset.VBoxPath))
                 {
                     File.Delete(vmset.VBoxPath);
-                    Console.WriteLine("removed leftover .vbox file");
+                    Console.WriteLine("removed leftosver .vbox file");
                 }
-            }
-        }
-        private void TryDeleteDirectory(string path)
-        {
-            const int maxRetries = 3;
-            const int retryDelayMs = 500;
-
-            for (int i = 0; i < maxRetries; i++)
-            {
-                try
-                {
-                    using var cmd = new Process
-                    {
-                        StartInfo = new ProcessStartInfo
-                        {
-                            FileName = "cmd.exe",
-                            Arguments = $"/c rmdir /s /q \"{path}\"",
-                            UseShellExecute = false,
-                            CreateNoWindow = true,
-                            RedirectStandardError = true
-                        }
-                    };
-                    cmd.Start();
-                    cmd.WaitForExit();
-
-                    if (cmd.ExitCode == 0 || !Directory.Exists(path))
-                    {
-                        Console.WriteLine("Removed leftover sandbox files");
-                        return;
-                    }
-                }
-                catch { }
-
-                if (i < maxRetries - 1)
-                    System.Threading.Thread.Sleep(retryDelayMs);
             }
         }
 
@@ -187,15 +148,6 @@ namespace vm
                 windowHelper.FocusVmWindow(vmset.VmName);
                 process.DoCommand($"controlvm \"{vmset.VmName}\" keyboardputscancode 1c 9c");
 
-                vm.WaitForBoot();
-                vm.WaitForGuestControl();
-                vm.CopyAgent();
-                vm.RegisterAgent();
-                vm.TriggerLogonForAgentStart();
-                vm.WaitForBoot();
-                vm.WaitForGuestControl();
-                vm.WaitForAgent();
-                vm.SaveSnapshot();
             }
             else
             {
@@ -282,10 +234,13 @@ namespace vm
 
         public void WaitForAgent()
         {
-            Console.WriteLine("Waiting for agent to start...");
-            while (!IsAgentRunning())
+            try
             {
-                System.Threading.Thread.Sleep(5000);
+                IsAgentRunning();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error occurred while waiting for agent: {ex.Message}");
             }
             Console.WriteLine("Agent confirmed running");
         }
@@ -299,7 +254,7 @@ namespace vm
             while (stableCount < requiredStableChecks)
             {
                 var (output, error) = process.DoCommand($"guestproperty get \"{vmset.VmName}\" /VirtualBox/GuestInfo/OS/LoggedInUsers");
-
+                
                 if (output.Contains("Value:") && !output.Contains("Value: 0"))
                 {
                     stableCount++;
