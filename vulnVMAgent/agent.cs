@@ -16,7 +16,6 @@ class Agent
 
     static void Main(string[] args)
     {
-        // creates the logging directory and output file path
         _logPath = args.Length > 0 ? args[0] : @"C:\vulnVMAgent\log.txt";
 
         try
@@ -32,7 +31,6 @@ class Agent
 
         Console.WriteLine("vulnVMAgent running");
 
-        // starts process monitoring, now with parent-PID attribution
         try
         {
             var watcher = new ManagementEventWatcher(
@@ -48,9 +46,6 @@ class Agent
             return;
         }
 
-        // dropped file watcher
-        // when the host copies a file in here (e.g. via guestcontrol copyto, triggered
-        // by a drag and drop in the host UI), this fires and marks it as a tracked root
         try
         {
             var dropWatcher = new FileSystemWatcher(DroppedFilesFolder)
@@ -73,7 +68,6 @@ class Agent
 
     static void OnFileDropped(object sender, FileSystemEventArgs e)
     {
-        // give the copy a moment to finish landing before anyone tries to run it
         Thread.Sleep(250);
         Log($"FILE DROPPED: {e.FullPath} — now tracking as root for any process it spawns");
     }
@@ -88,8 +82,6 @@ class Agent
         {
             ProcessParents[pid] = parentPid;
 
-            // case 1: this process IS a dropped file being executed directly
-            // (its image path/name matches something sitting in DroppedFilesFolder).
             string? matchedDrop = TryMatchDroppedFile(processName);
             if (matchedDrop != null)
             {
@@ -98,8 +90,6 @@ class Agent
                 return;
             }
 
-            // case 2: this process's parent is already tainted (i.e. it was spawned,
-            // directly or indirectly, by a dropped file). inherits the taint.
             if (TaintedProcesses.TryGetValue(parentPid, out var rootFile))
             {
                 TaintedProcesses[pid] = rootFile;
@@ -107,12 +97,10 @@ class Agent
                 return;
             }
 
-            // case 3: ordinary, untainted process -- logs plainly, same as before.
             Log($"Process started: {processName} (PID {pid}, parent {parentPid})");
         }
     }
 
-    // checks to see if the newly started process matches one of the files dropped into analysis directory
     static string? TryMatchDroppedFile(string processImagePath)
     {
         try

@@ -12,7 +12,6 @@ namespace gui
 {
     public class IsoInterface(Form interfaceState, VmSettings vmset, guiHelpers helper, RunProcess process, VBoxController vm)
     {
-        // initalizes all needed user interactive features
         TextBox VmNameTextBox = new TextBox();
         TextBox StorageTextBox = new TextBox();
         TextBox RamTextBox = new TextBox();
@@ -26,17 +25,13 @@ namespace gui
         Button StopVmButton = new Button();
         Panel VmFileDropPanel = new Panel();
 
-        // list of all available vms that are in the users virtualbox directory
         readonly List<string> _vmNames = new List<string>();
 
-        // places the interactable features/ non-interactable features onto the ui for user interaction
         public void InitializeComponent()
         {
-            // sets the name of the ui
-            interfaceState.Text = "vulnVM";
+=           interfaceState.Text = "vulnVM";
             interfaceState.AutoScroll = true;
 
-            // this is the portion of the ui that is primarily used by the user to create the vm to their liking
             var sectionNew = new Label {Text = "New VM", AutoSize = true, Location = new Point(20, 20)};
             var nameLabel = new Label {Text = "Name", AutoSize = true, Location = new Point(20, 38)};
             var storageLabel = new Label {Text = "Storage (GB)", AutoSize = true, Location = new Point(172, 38)};
@@ -48,7 +43,6 @@ namespace gui
             RamTextBox = new TextBox {PlaceholderText = "4", Location = new Point(274, 60), Width = 90};
             CpuTextBox = new TextBox { PlaceholderText = "4", Location = new Point(376, 60), Width = 70 };
 
-            // creates the iso image drag and drop feature to create ease of installation
             var isoLabel = new Label {Text = "ISO image", AutoSize = true, Location = new Point(20, 95)};
 
             IsoDragPanel = helper.CreateNewPanel(null, new Point(20, 120), path =>
@@ -57,19 +51,15 @@ namespace gui
                 IsoStatusLabel.Text = Path.GetFileName(path);
             });
 
-            // renders a box around the interactable drop field
             IsoDragPanel.Size = new Size(360, 40);
             IsoDragPanel.BackColor = SystemColors.Control;
             IsoDragPanel.BorderStyle = BorderStyle.FixedSingle;
 
-            // accessibility feature if the user does not want to drag and drop the .iso file
             BrowseIsoButton = new Button {Text = "Browse…", Location = new Point(390, 120), Size = new Size(80, 40)};
             BrowseIsoButton.Click += BrowseIso;
 
-            // base label for when an iso image is not used NOTE: if the user already has a vm created, than this can remain as-is
             IsoStatusLabel = new Label {Text = "No ISO selected", AutoSize = true, Location = new Point(20, 170)};
 
-            // runs the vm from the ui itself rather in virtualbox
             CreateVmButton = new Button {Text = "Create and run VM", Location = new Point(20, 200), Size = new Size(148, 26)};
             CreateVmButton.Click += RunVm;
 
@@ -80,7 +70,6 @@ namespace gui
 
             var sectionVms = new Label {Text = "VMs  —  double-click to boot", AutoSize = true, Location = new Point(20, 250)};
 
-            // displays the list of ALL available virtualbox vms on the host machine
             VmListBox = new ListBox
             {
                 Location = new Point(20, 275),
@@ -90,7 +79,6 @@ namespace gui
             };
             VmListBox.DoubleClick += BootVm;
 
-            // stops the vm that is selected in the list
             StopVmButton = new Button {Text = "Stop selected VM", Location = new Point(20, 425), Size = new Size(148, 26)};
             StopVmButton.Click += StopVm;
 
@@ -98,7 +86,6 @@ namespace gui
 
             var sectionDrop = new Label {Text = "Inject file into running VM", AutoSize = true, Location = new Point(20, 475)};
 
-            // panel that allows the user to drop samples from the host machine to the vm for analysis
             VmFileDropPanel = helper.CreateNewPanel(null, new Point(20, 500), path =>
             {
                 VBoxInit init = new VBoxInit(process, vm, vmset);
@@ -135,7 +122,6 @@ namespace gui
             LoadVmList();
         }
 
-        // method to load the vm list and display them individually
         void LoadVmList()
         {
             VmListBox.Items.Clear();
@@ -154,7 +140,6 @@ namespace gui
             }
         }
 
-        // method to enable the user to find their .iso image and use it
         void BrowseIso(object? sender, EventArgs e)
         {
             using var dlg = new OpenFileDialog
@@ -190,14 +175,12 @@ namespace gui
         {
             var missing = new List<string>();
 
-            // checks to see what needed entries the user is missing and appends them to the missing list
             if (string.IsNullOrWhiteSpace(VmNameTextBox.Text)) missing.Add("VM name");
             if (!int.TryParse(StorageTextBox.Text, out int storage) || storage <= 0) missing.Add("Storage (GB)");
             if (!int.TryParse(RamTextBox.Text, out int ram) || ram <= 0) missing.Add("RAM (GB)");
             if (!int.TryParse(CpuTextBox.Text, out int cpus) || cpus <= 0) missing.Add("CPUs");
             if (string.IsNullOrWhiteSpace(vmset.IsoPath)) missing.Add("ISO image");
 
-            // displays a message saying what parameters the user is missing IF there are any
             if (missing.Count > 0)
             {
                 MessageBox.Show(
@@ -209,20 +192,16 @@ namespace gui
             }
 
             vmset.VmName = VmNameTextBox.Text.Trim();
-            // converts the ram and storage from gb to mb 
             vmset.StorageGB = storage * 1024;
             vmset.RamGB = ram * 1024;
             vmset.CpuCount = cpus;
 
-            // creates the vm with the specified parameters
             VBoxInit init = new VBoxInit(process, vm, vmset);
-            // run it on a seperate thread to make the u.i seperate
             Task.Run(() => init.VBoxCreateFromIso());
 
             LoadVmList();
         }
 
-        // boots the vm
         void BootVm(object? sender, EventArgs e)
         {
             if (VmListBox.SelectedIndex < 0) return;
@@ -243,17 +222,14 @@ namespace gui
             vm.StartVM();
         }
 
-        // stops the vm upon confirmation by the user
         void StopVm(object? sender, EventArgs e)
         {
-            // prompts the user to select a vm from the vmlist list
             if (VmListBox.SelectedIndex < 0)
             {
                 MessageBox.Show("Select a VM from the list first.", "No selection", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            // powers off the vm that is selected and if it is in the vmlist list
             string name = _vmNames[VmListBox.SelectedIndex];
             if (MessageBox.Show($"Power off \"{name}\"?", "Stop VM", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
@@ -262,7 +238,6 @@ namespace gui
             }
         }
 
-        // configures and launches the ui
         public void startGUI()
         {
             interfaceState.Height = 620;
