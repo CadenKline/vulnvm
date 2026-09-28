@@ -36,12 +36,12 @@ namespace gui
             var nameLabel = new Label {Text = "Name", AutoSize = true, Location = new Point(20, 38)};
             var storageLabel = new Label {Text = "Storage (GB)", AutoSize = true, Location = new Point(172, 38)};
             var ramLabel = new Label {Text = "RAM (GB)", AutoSize = true, Location = new Point(274, 38)};
-            var cpuLabel = new Label { Text = "CPUs", AutoSize = true, Location = new Point(376, 38) };
+            var cpuLabel = new Label {Text = "CPUs", AutoSize = true, Location = new Point(376, 38) };
 
             VmNameTextBox = new TextBox {PlaceholderText = "ostextbox", Location = new Point(20, 60), Width = 140};
             StorageTextBox = new TextBox {PlaceholderText = "80", Location = new Point(172, 60), Width = 90};
             RamTextBox = new TextBox {PlaceholderText = "4", Location = new Point(274, 60), Width = 90};
-            CpuTextBox = new TextBox { PlaceholderText = "4", Location = new Point(376, 60), Width = 70 };
+            CpuTextBox = new TextBox {PlaceholderText = "4", Location = new Point(376, 60), Width = 70 };
 
             var isoLabel = new Label {Text = "ISO image", AutoSize = true, Location = new Point(20, 95)};
 

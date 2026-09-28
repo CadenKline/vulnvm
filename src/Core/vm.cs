@@ -36,7 +36,8 @@ namespace vm
             using var process = new Process
             {
                 StartInfo = new ProcessStartInfo
-                {                    FileName = "VBoxManage",
+                {                    
+                    FileName = "VBoxManage",
                     Arguments = args,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -75,7 +76,7 @@ namespace vm
                     return path;
             }
 
-                return null;
+            return null;
         }
     }
     public class VBoxInit(RunProcess process, VBoxController vm, VmSettings vmset)
