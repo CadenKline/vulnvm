@@ -6,6 +6,7 @@
 
 using helpers;
 using vm;
+using System.Windows.Forms.Design;
 
 namespace gui
 {
@@ -19,6 +20,7 @@ namespace gui
         Label IsoStatusLabel = new Label();
         Panel IsoDragPanel = new Panel();
         Button BrowseIsoButton = new Button();
+        Button OpenLogs = new Button();
         Button CreateVmButton = new Button();
         ListBox VmListBox = new ListBox();
         Button StopVmButton = new Button();
@@ -36,16 +38,15 @@ namespace gui
 
             // this is the portion of the ui that is primarily used by the user to create the vm to their liking
             var sectionNew = new Label {Text = "New VM", AutoSize = true, Location = new Point(20, 20)};
-
             var nameLabel = new Label {Text = "Name", AutoSize = true, Location = new Point(20, 38)};
             var storageLabel = new Label {Text = "Storage (GB)", AutoSize = true, Location = new Point(172, 38)};
             var ramLabel = new Label {Text = "RAM (GB)", AutoSize = true, Location = new Point(274, 38)};
-            var cpuLabel = new Label {Text = "CPUs", AutoSize = true, Location = new Point(376, 38)};
+            var cpuLabel = new Label { Text = "CPUs", AutoSize = true, Location = new Point(376, 38) };
 
             VmNameTextBox = new TextBox {PlaceholderText = "ostextbox", Location = new Point(20, 60), Width = 140};
             StorageTextBox = new TextBox {PlaceholderText = "80", Location = new Point(172, 60), Width = 90};
             RamTextBox = new TextBox {PlaceholderText = "4", Location = new Point(274, 60), Width = 90};
-            CpuTextBox = new TextBox {PlaceholderText = "4", Location = new Point(376, 60), Width = 70};
+            CpuTextBox = new TextBox { PlaceholderText = "4", Location = new Point(376, 60), Width = 70 };
 
             // creates the iso image drag and drop feature to create ease of installation
             var isoLabel = new Label {Text = "ISO image", AutoSize = true, Location = new Point(20, 95)};
@@ -71,6 +72,9 @@ namespace gui
             // runs the vm from the ui itself rather in virtualbox
             CreateVmButton = new Button {Text = "Create and run VM", Location = new Point(20, 200), Size = new Size(148, 26)};
             CreateVmButton.Click += RunVm;
+
+            OpenLogs = new Button {Text = "Logs", AutoSize = true, Location = new Point(478, 60), Width=70};
+            OpenLogs.Click += openLog;
 
             var divider1 = new Panel {Location = new Point(20, 240), Size = new Size(560, 1), BackColor = SystemColors.ControlDark};
 
@@ -124,7 +128,8 @@ namespace gui
                 StopVmButton,
                 divider2,
                 sectionDrop,
-                VmFileDropPanel
+                VmFileDropPanel,
+                OpenLogs
             });
 
             LoadVmList();
@@ -165,6 +170,22 @@ namespace gui
             }
         }
 
+        void openLog(object? sender, EventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "C:\\vulnVMAgent\\log.txt",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to open log file: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
         void RunVm(object? sender, EventArgs e)
         {
             var missing = new List<string>();
@@ -195,7 +216,8 @@ namespace gui
 
             // creates the vm with the specified parameters
             VBoxInit init = new VBoxInit(process, vm, vmset);
-            init.VBoxCreateFromIso();
+            // run it on a seperate thread to make the u.i seperate
+            Task.Run(() => init.VBoxCreateFromIso());
 
             LoadVmList();
         }

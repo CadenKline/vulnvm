@@ -4,6 +4,7 @@
 */
 
 using System.Diagnostics;
+using vulnAgent;
 using helpers;
 
 namespace vm
@@ -26,6 +27,15 @@ namespace vm
     {
         public (string output, string error) DoCommand(string args)
         {
+            var vboxPath = FindVirtualBoxPath();
+            if (!string.IsNullOrEmpty(vboxPath))
+            {
+                var currentPath = Environment.GetEnvironmentVariable("PATH") ?? "";
+                if (!currentPath.Contains(vboxPath))
+                {
+                    Environment.SetEnvironmentVariable("PATH", vboxPath + ";" + currentPath);
+                }
+            }
             using var process = new Process
             {
                 StartInfo = new ProcessStartInfo
@@ -54,6 +64,25 @@ namespace vm
 
             return (output, error);
         }
+
+        private string FindVirtualBoxPath()
+        {
+            // Common VirtualBox installation paths
+            string[] paths = new[]
+            {
+            @"C:\Program Files\Oracle\VirtualBox",
+            @"C:\Program Files (x86)\Oracle\VirtualBox",
+            @"C:\Program Files\VirtualBox"
+            };
+
+            foreach (var path in paths)
+            {
+                if (Directory.Exists(path))
+                    return path;
+            }
+
+                return null;
+        }
     }
 
     // class to handle the initial creation of the vm and take care of any remaining files
@@ -81,8 +110,7 @@ namespace vm
                 // removes the vdiFolder IF there was a vm that was previously used with the same name the user is currently attempting to enter
                 if (Directory.Exists(vdiFolder))
                 {
-                    Directory.Delete(vdiFolder, true);
-                    Console.WriteLine("Removed leftover sandbox files");
+                    TryDeleteDirectory(vdiFolder);
                 }
                 // removes the vdiPath IF there was a vm that was previously used with the same name the user is currently attempting to enter
                 if (File.Exists(vmset.VdiPath))
@@ -98,6 +126,43 @@ namespace vm
                     File.Delete(vmset.VBoxPath);
                     Console.WriteLine("removed leftover .vbox file");
                 }
+            }
+        }
+
+        // helper method to robustly delete directory with locks via cmd rmdir
+        private void TryDeleteDirectory(string path)
+        {
+            const int maxRetries = 3;
+            const int retryDelayMs = 500;
+
+            for (int i = 0; i < maxRetries; i++)
+            {
+                try
+                {
+                    using var cmd = new Process
+                    {
+                        StartInfo = new ProcessStartInfo
+                        {
+                            FileName = "cmd.exe",
+                            Arguments = $"/c rmdir /s /q \"{path}\"",
+                            UseShellExecute = false,
+                            CreateNoWindow = true,
+                            RedirectStandardError = true
+                        }
+                    };
+                    cmd.Start();
+                    cmd.WaitForExit();
+
+                    if (cmd.ExitCode == 0 || !Directory.Exists(path))
+                    {
+                        Console.WriteLine("Removed leftover sandbox files");
+                        return;
+                    }
+                }
+                catch { }
+
+                if (i < maxRetries - 1)
+                    System.Threading.Thread.Sleep(retryDelayMs);
             }
         }
 

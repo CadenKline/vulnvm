@@ -5,6 +5,7 @@
 
 using System.Management;
 
+namespace vulnAgent;
 class Agent
 {
     const string DroppedFilesFolder = @"C:\vulnVMAgent\dropped";
