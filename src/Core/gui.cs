@@ -20,6 +20,7 @@ namespace gui
         Panel IsoDragPanel = new Panel();
         Button BrowseIsoButton = new Button();
         Button OpenLogs = new Button();
+        Button ChooseFilePath = new Button();
         Button CreateVmButton = new Button();
         ListBox VmListBox = new ListBox();
         Button StopVmButton = new Button();
@@ -65,6 +66,9 @@ namespace gui
 
             OpenLogs = new Button {Text = "Logs", AutoSize = true, Location = new Point(478, 60), Width=70};
             OpenLogs.Click += openLog;
+
+            ChooseFilePath = new Button { Text = "File Path", AutoSize = true, Location = new Point(478, 80), Width = 70 };
+            ChooseFilePath.Click += openPath;
 
             var divider1 = new Panel {Location = new Point(20, 240), Size = new Size(560, 1), BackColor = SystemColors.ControlDark};
 
@@ -122,7 +126,7 @@ namespace gui
             LoadVmList();
         }
 
-        void LoadVmList()
+        public void LoadVmList()
         {
             VmListBox.Items.Clear();
             _vmNames.Clear();
@@ -171,6 +175,22 @@ namespace gui
             }
         }
 
+        void openPath(object? sender, EventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "C:\\vulnVMAgent\\log.txt",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to open log file: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
         void RunVm(object? sender, EventArgs e)
         {
             var missing = new List<string>();
@@ -199,17 +219,6 @@ namespace gui
             VBoxInit init = new VBoxInit(process, vm, vmset);
             Task.Run(() => init.VBoxCreateFromIso());
 
-            LoadVmList();
-
-            vm.WaitForBoot();
-            vm.WaitForGuestControl();
-            vm.CopyAgent();
-            vm.RegisterAgent();
-            vm.TriggerLogonForAgentStart();
-            vm.WaitForBoot();
-            vm.WaitForGuestControl();
-            vm.WaitForAgent();
-            vm.SaveSnapshot();
         }
 
         void BootVm(object? sender, EventArgs e)
@@ -223,7 +232,6 @@ namespace gui
             if (!init.VBoxCheckExist())
             {
                 MessageBox.Show($"\"{name}\" was not found in VirtualBox.", "VM not found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                LoadVmList();
                 return;
             }
 

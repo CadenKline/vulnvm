@@ -6,6 +6,7 @@
 using System.Diagnostics;
 using vulnAgent;
 using helpers;
+using gui;
 
 namespace vm
 {
@@ -113,6 +114,7 @@ namespace vm
         // creates/starts the vm
         public void VBoxCreateFromIso()
         {
+            IsoInterface gui = new IsoInterface(null, vmset, null, process, vm);
             if (!VBoxCheckExist())
             {
                 CleanUpFiles();
@@ -148,6 +150,17 @@ namespace vm
                 WindowHelper windowHelper = new WindowHelper();
                 windowHelper.FocusVmWindow(vmset.VmName);
                 process.DoCommand($"controlvm \"{vmset.VmName}\" keyboardputscancode 1c 9c");
+
+                gui.LoadVmList();
+                vm.WaitForBoot();
+                vm.WaitForGuestControl();
+                vm.CopyAgent();
+                vm.RegisterAgent();
+                vm.TriggerLogonForAgentStart();
+                vm.WaitForBoot();
+                vm.WaitForGuestControl();
+                vm.WaitForAgent();
+                vm.SaveSnapshot();
 
             }
             else
