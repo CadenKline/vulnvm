@@ -112,9 +112,8 @@ namespace vm
         }
 
         // creates/starts the vm
-        public void VBoxCreateFromIso()
+        public void VBoxCreateFromIso(IsoInterface gui)
         {
-            IsoInterface gui = new IsoInterface(null, vmset, null, process, vm);
             if (!VBoxCheckExist())
             {
                 CleanUpFiles();
@@ -153,6 +152,7 @@ namespace vm
 
                 gui.LoadVmList();
                 vm.WaitForBoot();
+                gui.LoadVmList();
                 vm.WaitForGuestControl();
                 vm.CopyAgent();
                 vm.RegisterAgent();
@@ -261,30 +261,56 @@ namespace vm
 
         public void WaitForBoot()
         {
-            Console.WriteLine("Waiting for vm to boot...");
+            Console.WriteLine("Waiting for guest control to be available...");
             int stableCount = 0;
-            const int requiredStableChecks = 5;
+            const int requiredStableChecks = 2;
+            int maxAttempts = 300;  // 25 minutes max (300 * 5 seconds)
+            int attempts = 0;
 
-            while (stableCount < requiredStableChecks)
+            while (stableCount < requiredStableChecks && attempts < maxAttempts)
             {
-                var (output, error) = process.DoCommand($"guestproperty get \"{vmset.VmName}\" /VirtualBox/GuestInfo/OS/LoggedInUsers");
-                
-                if (output.Contains("Value:") && !output.Contains("Value: 0"))
+                attempts++;
+
+                try
                 {
-                    stableCount++;
+                    // Try to execute a simple command via guest control
+                    var (output, error) = process.DoCommand($"guestcontrol \"{vmset.VmName}\" run --username user --password password -- cmd /c echo ready");
+
+                    // If the command executed successfully and returned our echo
+                    if (output.Contains("ready"))
+                    {
+                        stableCount++;
+                        Console.WriteLine($"Guest control responding (check {stableCount}/{requiredStableChecks})");
+                    }
+                    else if (!error.Contains("error") && !error.Contains("Error"))
+                    {
+                        stableCount++;
+                        Console.WriteLine($"Guest control responding (check {stableCount}/{requiredStableChecks})");
+                    }
+                    else
+                    {
+                        stableCount = 0;
+                        Console.WriteLine($"Guest not yet ready (attempt {attempts}/{maxAttempts})");
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    if (stableCount > 0)
-                        Console.WriteLine("Login state dropped — likely a reboot in progress, resetting stability counter");
                     stableCount = 0;
+                    Console.WriteLine($"Guest control check failed: {ex.Message}");
                 }
 
-                System.Threading.Thread.Sleep(5000);
+                if (stableCount < requiredStableChecks)
+                    System.Threading.Thread.Sleep(5000);
             }
-
-            Console.WriteLine("Guest OS boot confirmed stable");
-            System.Threading.Thread.Sleep(15000);
+            
+            if (attempts >= maxAttempts)
+            {
+                Console.WriteLine("WARNING: Guest control timeout reached. Continuing anyway...");
+            }
+            else
+            {
+                Console.WriteLine("Guest control confirmed available - VM ready");
+            }
         }
 
         public void SetupSharedFolder()

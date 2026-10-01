@@ -128,6 +128,12 @@ namespace gui
 
         public void LoadVmList()
         {
+            if (VmListBox.InvokeRequired)
+            {
+                VmListBox.Invoke(() => LoadVmList());
+                return;
+            }
+
             VmListBox.Items.Clear();
             _vmNames.Clear();
 
@@ -141,6 +147,7 @@ namespace gui
                 string name = trimmed.Substring(1, closeQuote - 1);
                 _vmNames.Add(name);
                 VmListBox.Items.Add(name);
+                VmListBox.Refresh();
             }
         }
 
@@ -217,7 +224,7 @@ namespace gui
             vmset.CpuCount = cpus;
 
             VBoxInit init = new VBoxInit(process, vm, vmset);
-            Task.Run(() => init.VBoxCreateFromIso());
+            Task.Run(() => init.VBoxCreateFromIso(this));
 
         }
 
