@@ -1,5 +1,4 @@
 # Known issues
-* runVm runs on the UI thread, causing the window to freeze for the entire duration of VM provisioning. Needs to move to a background thread with progress reported back to the form.
 * WaitForBoot, WaitForGuestControl, and WaitForAgent loop indefinitely with no timeout. A hung or crashed VM will lock the process permanently with no way to recover short of killing it.
 * Booting a VM from the list after restarting the app fails silently because SnapshotName is never repopulated from VirtualBox, its only set during the original provisioning run.
 * The VM list does not reflect running state, there is no visual distinction between a VM that is currently running and one that is powered off.

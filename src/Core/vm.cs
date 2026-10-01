@@ -273,10 +273,8 @@ namespace vm
 
                 try
                 {
-                    // Try to execute a simple command via guest control
                     var (output, error) = process.DoCommand($"guestcontrol \"{vmset.VmName}\" run --username user --password password -- cmd /c echo ready");
 
-                    // If the command executed successfully and returned our echo
                     if (output.Contains("ready"))
                     {
                         stableCount++;
