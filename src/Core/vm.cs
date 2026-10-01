@@ -4,7 +4,6 @@
 */
 
 using System.Diagnostics;
-using vulnAgent;
 using helpers;
 using gui;
 
@@ -134,6 +133,7 @@ namespace vm
                 process.DoCommand($"createhd --filename \"{vmset.VdiPath}\" --size {vmset.StorageGB}");
                 process.DoCommand($"storagectl \"{vmset.VmName}\" --name \"SATA\" --add sata");
                 process.DoCommand($"storageattach \"{vmset.VmName}\" --storagectl \"SATA\" --port 0 --device 0 --type hdd --medium \"{vmset.VdiPath}\"");
+                process.DoCommand($"modifyvm \"{vmset.VmName}\" --description \"VulnVM - Created by vulnvm application\"");
 
                 vm.SetupSharedFolder();
 

@@ -6,7 +6,6 @@
 
 using helpers;
 using vm;
-using System.Windows.Forms.Design;
 
 namespace gui
 {
@@ -145,8 +144,14 @@ namespace gui
                 int closeQuote = trimmed.IndexOf('"', 1);
                 if (closeQuote < 0) continue;
                 string name = trimmed.Substring(1, closeQuote - 1);
-                _vmNames.Add(name);
-                VmListBox.Items.Add(name);
+
+                // maybe add a .db to track vms spawned by the proigram instead of using desecription idk
+                var (descOutput, _) = process.DoCommand($"showvminfo \"{name}\" --machinereadable");
+                bool isVulnVmCreated = descOutput.Contains("description=\"VulnVM");
+
+                string displayName = isVulnVmCreated ? $"{name} - VulnVM" : name;
+
+                VmListBox.Items.Add(displayName);
                 VmListBox.Refresh();
             }
         }
