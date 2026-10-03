@@ -107,6 +107,8 @@ namespace vm
                     File.Delete(vmset.VBoxPath);
                     Console.WriteLine("removed leftosver .vbox file");
                 }
+
+                vm.DeleteVM();
             }
         }
 
@@ -161,14 +163,12 @@ namespace vm
                 vm.WaitForGuestControl();
                 vm.WaitForAgent();
                 vm.SaveSnapshot();
-
             }
             else
             {
                 vm.RestoreSnapShot();
                 vm.StartVM();
             }
-
         }
     }
 
@@ -382,6 +382,14 @@ namespace vm
                 Console.WriteLine($"DropFileIntoVm FAILED: {copyError}");
             else
                 Console.WriteLine($"File dropped successfully: {guestPath}");
+        }
+
+        private static extern IntPtr FindWindow(string? lpClassName, string lpWindowName);
+
+        public void DeleteVM()
+        {
+            process.DoCommand("unregistervm \"" + vmset.VmName + "\" --delete");
+            Console.WriteLine("VM deleted successfully");
         }
     }
 }

@@ -23,6 +23,7 @@ namespace gui
         Button CreateVmButton = new Button();
         ListBox VmListBox = new ListBox();
         Button StopVmButton = new Button();
+        Button DeleteVMButton = new Button();
         Panel VmFileDropPanel = new Panel();
 
         readonly List<string> _vmNames = new List<string>();
@@ -68,6 +69,9 @@ namespace gui
 
             ChooseFilePath = new Button { Text = "File Path", AutoSize = true, Location = new Point(478, 80), Width = 70 };
             ChooseFilePath.Click += openPath;
+
+            DeleteVMButton = new Button { Text = "Delete VM", AutoSize = true, Location = new Point(478, 100), Width = 70 };
+            DeleteVMButton.Click += DeleteVM;
 
             var divider1 = new Panel {Location = new Point(20, 240), Size = new Size(560, 1), BackColor = SystemColors.ControlDark};
 
@@ -119,7 +123,9 @@ namespace gui
                 divider2,
                 sectionDrop,
                 VmFileDropPanel,
-                OpenLogs
+                OpenLogs,
+                ChooseFilePath,
+                DeleteVMButton
             });
 
             LoadVmList();
@@ -152,6 +158,7 @@ namespace gui
                 string displayName = isVulnVmCreated ? $"{name} - VulnVM" : name;
 
                 VmListBox.Items.Add(displayName);
+                _vmNames.Add(name);
                 VmListBox.Refresh();
             }
         }
@@ -187,6 +194,7 @@ namespace gui
             }
         }
 
+        //fix ( supposed to be a selection for output file )
         void openPath(object? sender, EventArgs e)
         {
             try
@@ -200,6 +208,22 @@ namespace gui
             catch (Exception ex)
             {
                 MessageBox.Show($"Failed to open log file: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        void DeleteVM(object? sender, EventArgs e)
+        {
+            if (VmListBox.SelectedIndex < 0)
+            {
+                MessageBox.Show("Select a VM from the list first.", "No selection", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            string name = _vmNames[VmListBox.SelectedIndex];
+            if (MessageBox.Show($"Are you sure you want to delete \"{name}\"? This action cannot be undone.", "Delete VM", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+            {
+                vmset.VmName = name;
+                vm.DeleteVM();
+                LoadVmList();
             }
         }
 
