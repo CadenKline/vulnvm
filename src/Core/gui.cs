@@ -61,16 +61,16 @@ namespace gui
 
             IsoStatusLabel = new Label {Text = "No ISO selected", AutoSize = true, Location = new Point(20, 170)};
 
-            CreateVmButton = new Button {Text = "Create and run VM", Location = new Point(20, 200), Size = new Size(148, 26)};
+            CreateVmButton = new Button {Text = "Create and run VM", Location = new Point(20, 200), Width = 148 };
             CreateVmButton.Click += RunVm;
 
-            OpenLogs = new Button {Text = "Logs", AutoSize = true, Location = new Point(478, 60), Width=70};
+            OpenLogs = new Button {Text = "Logs", AutoSize = true, Location = new Point(330, 200), Width = 70 };
             OpenLogs.Click += openLog;
 
-            ChooseFilePath = new Button { Text = "File Path", AutoSize = true, Location = new Point(478, 80), Width = 70 };
+            ChooseFilePath = new Button { Text = "File Path", AutoSize = true, Location = new Point(420, 200), Width = 70 };
             ChooseFilePath.Click += openPath;
 
-            DeleteVMButton = new Button { Text = "Delete VM", AutoSize = true, Location = new Point(478, 100), Width = 70 };
+            DeleteVMButton = new Button { Text = "Delete VM", AutoSize = true, Location = new Point(510, 200), Width = 70 };
             DeleteVMButton.Click += DeleteVM;
 
             var divider1 = new Panel {Location = new Point(20, 240), Size = new Size(560, 1), BackColor = SystemColors.ControlDark};
