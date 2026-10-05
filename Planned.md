@@ -10,7 +10,7 @@
 * Persist snapshot names alongside VM names so the boot-from-list feature works correctly after an app restart.
 * Make guest credentials (user / password) configurable rather than hardcoded throughout the codebase.
 * Show running/stopped state in the VM list and refresh it automatically when a VM is started or stopped.
-* Add a way to view the agent log (log.txt) directly from the UI without opening it manually in a file explorer.
+* Add a way to view the agent log (log.txt) directly from the UI without opening it manually in a file explorer. (Added funct, but does not work)
 * Expand agent monitoring to include registry changes and file system events in addition to process starts.
 * Add network connection logging to the agent so outbound connections made by a dropped file are captured.
 
