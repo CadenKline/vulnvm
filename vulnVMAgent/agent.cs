@@ -6,7 +6,6 @@
 // agent should have its log path changed to manual configuration to allow for logs to be continually updated without running of storage.
 
 using System.Management;
-using vm;
 
 namespace vulnAgent;
 class Agent

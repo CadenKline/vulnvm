@@ -198,92 +198,99 @@ namespace vm
             process.DoCommand($"snapshot \"{vmset.VmName}\" restore \"{vmset.SnapshotName}\"");
         }
 
+        private bool GuestRun(string exe, string argv, out string output, out string error)
+        {
+            (output, error) = process.DoCommand(
+                $"guestcontrol \"{vmset.VmName}\" run " +
+                $"--username user --password password -- {argv}");
+
+            return string.IsNullOrWhiteSpace(error) ||
+                   !error.Contains("error", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool GuestResponds()
+        {
+            bool ok = GuestRun(@"C:\Windows\System32\cmd.exe", "cmd.exe /c echo ready", out var output, out _);
+            return ok && output.Split('\n').Any(l => l.Trim().Equals("ready", StringComparison.OrdinalIgnoreCase));
+        }
+
         public void TriggerLogonForAgentStart()
         {
             Console.WriteLine("Restarting vm to trigger launch with elevated token");
 
-            // user and password are the defaults for admin control
-            process.DoCommand($"guestcontrol \"{vmset.VmName}\" run " +
-                $"--exe \"C:\\Windows\\System32\\shutdown.exe\" " +
-                $"--username user --password password " +
-                $"-- /r /t 0");
+            GuestRun(@"C:\Windows\System32\shutdown.exe", "shutdown.exe /r /t 0", out _, out var err);
+            if (!string.IsNullOrWhiteSpace(err))
+                Console.WriteLine($"Reboot command returned: {err}");
+
+            // wait until the guest actually goes DOWN so WaitForBoot doesn't pass on the pre-reboot session
+            var deadline = DateTime.UtcNow.AddSeconds(90);
+            while (DateTime.UtcNow < deadline && GuestResponds())
+                Thread.Sleep(3000);
 
             Console.WriteLine("Reboot triggered");
         }
 
-        public void WaitForGuestControl()
+        public void WaitForGuestControl(int timeoutMinutes = 60)
         {
             Console.WriteLine("Waiting for guest control service to be ready");
-            bool ready = false;
+            var deadline = DateTime.UtcNow.AddMinutes(timeoutMinutes);
             int attempts = 0;
 
-            while (!ready)
+            while (!GuestResponds())
             {
-                var (output, error) = process.DoCommand($"guestcontrol \"{vmset.VmName}\" run " +
-                    $"--exe \"C:\\Windows\\System32\\cmd.exe\" " +
-                    $"--username user --password password " +
-                    $"-- /c exit");
+                if (DateTime.UtcNow > deadline)
+                    throw new TimeoutException("Guest control never became available.");
 
-                if (!error.Contains("not ready"))
+                attempts++;
+                if (attempts % 12 == 0)
                 {
-                    ready = true;
-                    Console.WriteLine("Guest control service ready");
+                    var (glOutput, _) = process.DoCommand(
+                        $"guestproperty get \"{vmset.VmName}\" /VirtualBox/GuestAdd/Vbgl/Version");
+                    Console.WriteLine($"Still waiting - GuestAdd reported version: {glOutput}");
                 }
-                else
-                {
-                    attempts++;
-                    if (attempts % 12 == 0) // every 60~ seconds
-                    {
-                        Console.WriteLine("Still waiting - checking the guest additions run level");
-                        var (glOutput, _) = process.DoCommand($"guestproperty get \"{vmset.VmName}\" /VirtualBox/GuestAdd/Vbgl/Version");
-                        Console.WriteLine($"GuestAdd reported version: {glOutput}");
-                    }
-                    Console.WriteLine("Guest control not ready, retrying in 5 seconds...");
-                    System.Threading.Thread.Sleep(5000);
-                }
+                Console.WriteLine("Guest control not ready, retrying in 5 seconds...");
+                Thread.Sleep(5000);
             }
+            Console.WriteLine("Guest control service ready");
         }
+
         public bool IsAgentRunning()
         {
-            var (output, error) = process.DoCommand($"guestcontrol \"{vmset.VmName}\" run --exe \"C:\\Windows\\System32\\tasklist.exe\" --username user --password password");
-            return output.Contains("vulnVMAgent.exe");
+            GuestRun(@"C:\Windows\System32\tasklist.exe",
+                     "tasklist.exe /FI \"IMAGENAME eq vulnVMAgent.exe\"",
+                     out var output, out _);
+            return output.Contains("vulnVMAgent.exe", StringComparison.OrdinalIgnoreCase);
         }
 
-        public void WaitForAgent()
+        public void WaitForAgent(int timeoutMinutes = 5)
         {
-            try
+            Console.WriteLine("Waiting for agent to start...");
+            var deadline = DateTime.UtcNow.AddMinutes(timeoutMinutes);
+
+            while (!IsAgentRunning())
             {
-                IsAgentRunning();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error occurred while waiting for agent: {ex.Message}");
+                if (DateTime.UtcNow > deadline)
+                    throw new TimeoutException("Agent never started in the guest (check Run key / autologon).");
+                Thread.Sleep(5000);
             }
             Console.WriteLine("Agent confirmed running");
         }
 
-        public void WaitForBoot()
+        public void WaitForBoot(int timeoutMinutes = 60)
         {
             Console.WriteLine("Waiting for guest control to be available...");
-            int stableCount = 0;
             const int requiredStableChecks = 2;
-            int maxAttempts = 300;  // 25 minutes max (300 * 5 seconds)
-            int attempts = 0;
+            int stableCount = 0;
+            var deadline = DateTime.UtcNow.AddMinutes(timeoutMinutes);
 
-            while (stableCount < requiredStableChecks && attempts < maxAttempts)
+            while (stableCount < requiredStableChecks)
             {
-                attempts++;
+                if (DateTime.UtcNow > deadline)
+                    throw new TimeoutException($"Guest did not become available within {timeoutMinutes} minutes.");
 
                 try
                 {
-                    var (output, error) = process.DoCommand($"guestcontrol \"{vmset.VmName}\" run --username user --password password -- cmd /c echo ready");
-
-                    if (output.Contains("ready"))
-                    {
-                        stableCount++;
-                        Console.WriteLine($"Guest control responding (check {stableCount}/{requiredStableChecks})");
-                    }
-                    else if (!error.Contains("error") && !error.Contains("Error"))
+                    if (GuestResponds())
                     {
                         stableCount++;
                         Console.WriteLine($"Guest control responding (check {stableCount}/{requiredStableChecks})");
@@ -291,7 +298,7 @@ namespace vm
                     else
                     {
                         stableCount = 0;
-                        Console.WriteLine($"Guest not yet ready (attempt {attempts}/{maxAttempts})");
+                        Console.WriteLine("Guest not yet ready...");
                     }
                 }
                 catch (Exception ex)
@@ -301,17 +308,9 @@ namespace vm
                 }
 
                 if (stableCount < requiredStableChecks)
-                    System.Threading.Thread.Sleep(5000);
+                    Thread.Sleep(5000);
             }
-            
-            if (attempts >= maxAttempts)
-            {
-                Console.WriteLine("WARNING: Guest control timeout reached. Continuing anyway...");
-            }
-            else
-            {
-                Console.WriteLine("Guest control confirmed available - VM ready");
-            }
+            Console.WriteLine("Guest control confirmed available - VM ready");
         }
 
         public void SetupSharedFolder()
@@ -331,16 +330,21 @@ namespace vm
         public void CopyAgent()
         {
             string agentPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "vulnVMAgent.exe");
+            if (!File.Exists(agentPath))
+                throw new FileNotFoundException("vulnVMAgent.exe not found next to the host executable.", agentPath);
+
             Console.WriteLine("Copying agent into guest vm");
 
-            var (mkdirOutput, mkdirError) = process.DoCommand(
-                $"guestcontrol \"{vmset.VmName}\" mkdir \"C:\\vulnVMAgent\" --username user --password password");
-            Console.WriteLine($"mkdir result: {mkdirOutput} {mkdirError}");
+            // mkdir errors if the folder already exists - that's fine ig
+            process.DoCommand($"guestcontrol \"{vmset.VmName}\" mkdir \"C:\\vulnVMAgent\" --username user --password password");
+            process.DoCommand($"guestcontrol \"{vmset.VmName}\" mkdir \"C:\\vulnVMAgent\\dropped\" --username user --password password");
 
-            // copies the agent into the directory
-            var (copyOutput, copyError) = process.DoCommand(
-                $"guestcontrol \"{vmset.VmName}\" copyto \"{agentPath}\" \"C:\\vulnVMAgent\\vulnVMAgent.exe\" --username user --password password");
-            Console.WriteLine($"copyto result: {copyOutput} {copyError}");
+            var (_, copyError) = process.DoCommand(
+                $"guestcontrol \"{vmset.VmName}\" copyto \"{agentPath}\" \"C:\\vulnVMAgent\\vulnVMAgent.exe\" " +
+                $"--username user --password password");
+
+            if (copyError.Contains("error", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"Agent copy failed: {copyError}");
 
             Console.WriteLine("Agent copied successfully");
         }
@@ -348,21 +352,17 @@ namespace vm
         // redundant, but ensures that the vm is available on every runnable instance of the vm
         public void RegisterAgent()
         {
-
             string logPath = @"\\vboxsvr\SandboxLogs\log.txt";
             Console.WriteLine("Registering agent as startup program...");
 
-            var (output, error) = process.DoCommand($"guestcontrol \"{vmset.VmName}\" run " +
-                $"--exe \"C:\\Windows\\System32\\reg.exe\" " +
-                $"--username user --password password " +
-                $"-- add \"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\" " +
-                $"/v vulnVMAgent /t REG_SZ /d \"C:\\vulnVMAgent\\vulnVMAgent.exe {logPath}\" /f");
+            bool ok = GuestRun(@"C:\Windows\System32\reg.exe",
+                "reg.exe add \"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\" " +
+                $"/v vulnVMAgent /t REG_SZ /d \"C:\\vulnVMAgent\\vulnVMAgent.exe {logPath}\" /f",
+                out var output, out var error);
 
             Console.WriteLine($"Register result: {output} {error}");
-            if (!string.IsNullOrEmpty(error))
-                Console.WriteLine("Agent registration may have failed");
-            else
-                Console.WriteLine("Agent registered successfully");
+            if (!ok) throw new InvalidOperationException("Agent registration failed: " + error);
+            Console.WriteLine("Agent registered successfully");
         }
 
         public void DropFileIntoVm(string hostFilePath)

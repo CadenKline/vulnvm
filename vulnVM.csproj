@@ -24,8 +24,9 @@
 	<Compile Remove="vulnVMAgent\**\*.cs" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Include="vulnVMAgent\agent.cs" />
-  </ItemGroup>
+	<Target Name="BuildAndCopyAgent" AfterTargets="Build">
+		<Exec Command="dotnet publish &quot;$(MSBuildProjectDirectory)\vulnVMAgent\vulnVMAgent.csproj&quot; -c $(Configuration) -o &quot;$(MSBuildProjectDirectory)\obj\agent-publish&quot;" />
+		<Copy SourceFiles="$(MSBuildProjectDirectory)\obj\agent-publish\vulnVMAgent.exe" DestinationFolder="$(OutDir)" />
+	</Target>
 
 </Project>
