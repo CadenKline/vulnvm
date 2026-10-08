@@ -69,26 +69,6 @@ class Agent
         while (true) Thread.Sleep(1000);
     }
 
-    void openAgentPath(object? sender, EventArgs e)
-    {
-        
-        using (FolderBrowserDialog folderDialog = new FolderBrowserDialog())
-        {
-            folderDialog.Description = "Select a path for your Agent to save your log files.";
-
-            if (!string.IsNullOrEmpty(vmset.AgentPath))
-            {
-                folderDialog.SelectedPath = vmset.AgentPath;
-            }
-
-            if (folderDialog.ShowDialog() == DialogResult.OK)
-            {
-                vmset.AgentPath = folderDialog.SelectedPath;
-                MessageBox.Show($"VM path set to: {folderDialog.SelectedPath}", "Path Selected", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-        }
-    }
-
     static void OnFileDropped(object sender, FileSystemEventArgs e)
     {
         Thread.Sleep(250);
