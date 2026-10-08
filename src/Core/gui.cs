@@ -64,10 +64,10 @@ namespace gui
             CreateVmButton = new Button {Text = "Create and run VM", Location = new Point(20, 200), Width = 148 };
             CreateVmButton.Click += RunVm;
 
-            OpenLogs = new Button {Text = "Logs", AutoSize = true, Location = new Point(330, 200), Width = 70 };
+            OpenLogs = new Button {Text = "Logs", AutoSize = true, Location = new Point(440, 200), Width = 70 };
             OpenLogs.Click += openLog;
 
-            ChooseFilePath = new Button { Text = "File Path", AutoSize = true, Location = new Point(420, 200), Width = 70 };
+            ChooseFilePath = new Button { Text = "Change File Path", AutoSize = true, Location = new Point(470, 120), Size = new Size(80, 40)};
             ChooseFilePath.Click += openPath;
 
             DeleteVMButton = new Button { Text = "Delete VM", AutoSize = true, Location = new Point(510, 200), Width = 70 };
@@ -194,20 +194,22 @@ namespace gui
             }
         }
 
-        //fix ( supposed to be a selection for output file )
         void openPath(object? sender, EventArgs e)
         {
-            try
+            using (FolderBrowserDialog folderDialog = new FolderBrowserDialog())
             {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                folderDialog.Description = "Select a path for your VM storage";
+
+                if (!string.IsNullOrEmpty(vmset.VmPath))
                 {
-                    FileName = "C:\\vulnVMAgent\\log.txt",
-                    UseShellExecute = true
-                });
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Failed to open log file: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    folderDialog.SelectedPath = vmset.VmPath;
+                }
+
+                if (folderDialog.ShowDialog() == DialogResult.OK)
+                {
+                    vmset.VmPath = folderDialog.SelectedPath;
+                    MessageBox.Show($"VM path set to: {folderDialog.SelectedPath}", "Path Selected", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
             }
         }
 

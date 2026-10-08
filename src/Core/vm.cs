@@ -16,7 +16,10 @@ namespace vm
         public string SnapshotName { get; set; }
         public string VdiPath { get; set; }
         public string VBoxPath { get; set; }
+        public string VmPath { get; set; }
+        public string AgentPath { get; set; }
         public int RamGB { get; set; }
+        
         public int StorageGB { get; set; }
         public int CpuCount { get; set; }
     }
